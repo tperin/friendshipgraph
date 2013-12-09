@@ -8,11 +8,15 @@ import java.util.Scanner;
 
 
 class Neighbor {
-    public int vertexNum;
+    public int index;
     public Neighbor next;
     
-    public Neighbor(int vnum, Neighbor nbr) {
-            this.vertexNum = vnum;
+    public Neighbor(int index) {
+    	this.index = index;
+    	next = null;
+    }
+    public Neighbor(int index, Neighbor nbr) {
+            this.index = index;
             next = nbr;
     }
 }
@@ -33,6 +37,9 @@ class Vertex {
 		nbr.next = adjList;
 		adjList = nbr;
     }
+    public boolean equals(Vertex v) {
+    	return this.name == v.name && this.school == v.school;
+    }
 }
 
 public class Graph {
@@ -40,22 +47,30 @@ public class Graph {
 	public ArrayList<Vertex> adjList; //used to store all the vertexes
 	HashMap<String,Integer> indexes; //used for quick conversion from person to index number
 	
-	//this constructor is for subgraphs
+	/**
+	 * Constructor with no parameters used to make subgraphs
+	 */
 	public Graph() {
 		adjList = new ArrayList<Vertex>();
 		indexes = new HashMap<String,Integer>();
 	}
 	
+	/**
+	 * Constructor used to create initial graph from file
+	 * @param file
+	 * @throws FileNotFoundException
+	 */
 	public Graph(String file) throws FileNotFoundException {
 		
 		Scanner sc = new Scanner(new File(file));
-		int size = Integer.parseInt(sc.nextLine().trim()); //first line is graph size
+		int size = Integer.parseInt(sc.nextLine()); //first line is graph size
 		adjList = new ArrayList<Vertex>(size);
 		indexes = new HashMap<String,Integer>(size);
 		
 		for (int i = 0; i < size; i++) {
-			String line = sc.nextLine().trim().toLowerCase();
-			String[] data = line.split("\\|");
+			String line = sc.nextLine().toLowerCase();
+			String[] data = line.split("\\|"); //split the line by the pipe token
+			
 			if (data.length < 3) { //they have no school
 				adjList.add(new Vertex(data[0], null, null));
 			}
@@ -65,19 +80,24 @@ public class Graph {
 			indexes.put(data[0], i);
 		}
 		
-		while (sc.hasNextLine()) { //go through edges
-			String line = sc.nextLine().trim().toLowerCase();
+		while (sc.hasNextLine()) { //go through edges/friendships
+			String line = sc.nextLine().toLowerCase();
 			String[] t = line.split("\\|");
 			int i1 = indexes.get(t[0]);
 			int i2 = indexes.get(t[1]);
 			
-			adjList.get(i1).addNeighbor(new Neighbor(i2, null));
-			adjList.get(i2).addNeighbor(new Neighbor(i1, null));
+			adjList.get(i1).addNeighbor(new Neighbor(i2));
+			adjList.get(i2).addNeighbor(new Neighbor(i1));
 		}
+		sc.close();
 	}
 
+	/**
+	 * Adds vertex to graph, really just used for subgraphs since the initial graph has a set size
+	 * @param v
+	 */
 	public void addVertex(Vertex v) {
-		int index = adjList.size();
+		int index = adjList.size(); //index for new addition will be the size of the graph
 		adjList.add(new Vertex(v.name, v.school, null));
 		indexes.put(v.name,index);
 	}
@@ -88,14 +108,29 @@ public class Graph {
 		indexes.put(name, index);
 	}
 	
+	/**
+	 * Converts name string to its index from the hash table
+	 * @param name
+	 * @return vertex's index
+	 */
 	private int nameToIndex(String name) {
 		return indexes.get(name);
 	}
 	
+	/**
+	 * Converts index to name string
+	 * @param index
+	 * @return name of given index
+	 */
 	public String indexToName(int index) {
 		return adjList.get(index).name;
 	}
 	
+	/**
+	 * Creates a new subgraph for students from given school
+	 * @param schoolName
+	 * @return subgraph
+	 */
 	public Graph studentsAtSchool(String schoolName) {
 		int size = adjList.size();
 		Graph subgraph = new Graph();
@@ -115,59 +150,22 @@ public class Graph {
 			
 			Neighbor friendPtr = origRef.adjList;
 			while (friendPtr != null) {
-				Vertex friend = adjList.get(friendPtr.vertexNum);
+				Vertex friend = adjList.get(friendPtr.index);
 				if (friend.school != null && friend.school.equals(schoolName)) {
 					int newIndex = subgraph.nameToIndex(friend.name);
-					newRef.addNeighbor(new Neighbor(newIndex, null));
+					newRef.addNeighbor(new Neighbor(newIndex));
 				}
 				friendPtr = friendPtr.next;
 			}
 		}
 		return subgraph;
 	}
-	
-	public boolean hasEdge(Vertex v1, Vertex v2) {
-		Neighbor v1friends = v1.adjList;
-		while (v1friends != null) {
-			if (indexToName(v1friends.vertexNum).equals(v2.name)) {
-				return true;
-			}
-			v1friends = v1friends.next;
-		}
-		return false;
-	}
-	
-	public Graph graphWithoutVertex(String name) { //generates graph without the given person
-		int index = nameToIndex(name);
-		Graph subgraph = new Graph();
-		for (int i = 0; i < adjList.size(); i++) {
-			if (i != index) {
-				subgraph.addVertex(adjList.get(i));
-			}
-		}
-		for (int i = 0; i < subgraph.adjList.size(); i++) {
-			String person = subgraph.adjList.get(i).name;
-			Neighbor ptr = adjList.get(nameToIndex(person)).adjList;
-			while (ptr != null) {
-				if (ptr.vertexNum != index) {
-					String nName = indexToName(ptr.vertexNum);
-					int newIndex = subgraph.nameToIndex(nName);
-					subgraph.adjList.get(i).addNeighbor(new Neighbor(newIndex, null));
-				}
-				ptr = ptr.next;
-			}
-		}
-		return subgraph;
-	}
-	
-	public boolean isConnector(int index) { //junk
-		Vertex person = adjList.get(index);
-		int cliquesWith = getCliques(person.school).size();
-		int cliquesWithout = graphWithoutVertex(person.name).getCliques().size();
-		return false;
-	}
 
-	public void dfsTopsort() { //not done
+	/**
+	 * Returns list of connectors from graph using dfs
+	 * Note: still need to implement check for starting point connectors
+	 */
+	public ArrayList<String> getConnectors() { 
 		boolean[] visited = new boolean[adjList.size()];
 		boolean[] backed = new boolean[adjList.size()];
 		
@@ -181,50 +179,100 @@ public class Graph {
 		ArrayList<Vertex> connectors = new ArrayList<Vertex>();
 		for (int v=0; v < visited.length; v++) {
 			if (!visited[v]) {
-				System.out.println("Starting at " + indexToName(v));
 				dfsTopsort(v, visited, num, connectors);
 			}
 		}
-		
-		for (Vertex v : connectors) {
-			System.out.println(v.name);
-		}
+		ArrayList<String> result = new ArrayList<String>(connectors.size());
+		for (Vertex v : connectors) result.add(v.name);
+		return result;
 		
 	}
 	
 	//still need to fix check for start point connector
+	/**
+	 * DFS used for finding connectors
+	 */
 	private void dfsTopsort(int v, boolean[] visited, int num, ArrayList<Vertex> connectors) { //not done
 		visited[v] = true;
-		//System.out.println("Visiting " + indexToName(v));
 		adjList.get(v).dfsnum = num;
 		adjList.get(v).backnum = num;
-		//System.out.println(indexToName(v) + " " + adjList.get(v).dfsnum);
 		num++;
 		
 		for (Neighbor e=adjList.get(v).adjList; e != null; e=e.next) {
-			if (!visited[e.vertexNum]) {
-				dfsTopsort(e.vertexNum, visited, num, connectors);
-				if (adjList.get(v).dfsnum > adjList.get(e.vertexNum).backnum) {
-					adjList.get(v).backnum = Math.min(adjList.get(v).backnum,adjList.get(e.vertexNum).backnum);
+			if (!visited[e.index]) {
+				dfsTopsort(e.index, visited, num, connectors);
+				if (adjList.get(v).dfsnum > adjList.get(e.index).backnum) {
+					adjList.get(v).backnum = Math.min(adjList.get(v).backnum,adjList.get(e.index).backnum);
 				}
 				else if (!connectors.contains(adjList.get(v))) connectors.add(adjList.get(v));
 			}
 			else {
-				//System.out.println("Been here before " + indexToName(e.vertexNum));
-				adjList.get(v).backnum = Math.min(adjList.get(v).backnum, adjList.get(e.vertexNum).dfsnum);
+				//if we get here we have already visited this vertex
+				adjList.get(v).backnum = Math.min(adjList.get(v).backnum, adjList.get(e.index).dfsnum);
 			}
 		}
 	}
 	
-	public ArrayList<Vertex> getConnectors() { //junk
+	/**
+	 * Gets shortest path between two people on the graph
+	 * @param source
+	 * @param target
+	 * @return string representation of shortest path, null if no such path exists
+	 */
+	public String getShortestPath(String source, String target) {
+		Vertex vSource = adjList.get(nameToIndex(source));
+		Vertex vTarget = adjList.get(nameToIndex(target));
+		Queue<Vertex> q = new Queue<Vertex>();
+		q.enqueue(vSource);
 		
-		return null;
+		HashMap<Vertex,Boolean> visited = new HashMap<Vertex,Boolean>();
+		HashMap<Vertex, Vertex> parents = new HashMap<Vertex, Vertex>();
+		visited.put(vSource, true);
+		
+		Vertex curr = null;
+		while (!q.isEmpty()) {
+			curr = q.dequeue();
+			
+			if (curr.equals(vTarget)) {
+				break;
+			}
+			else {
+				Neighbor ptr = curr.adjList;
+				while (ptr != null) {
+					Vertex nbr = adjList.get(ptr.index);
+					if (!visited.containsKey(nbr)) {
+						q.enqueue(nbr);
+						visited.put(nbr, true);
+						parents.put(nbr, curr);
+					}
+					ptr = ptr.next;
+				}
+			}
+		}
+		if (!curr.equals(vTarget)) {
+			return null;
+		}
+		Vertex ptr = vTarget;
+		String result = ptr.name;
+		while (parents.get(ptr) != null) {
+			result = parents.get(ptr).name + "--" + result;
+			ptr = parents.get(ptr);
+		}
+		return result;
+		
 	}
 	
+	
+	/**
+	 * Returns ArrayList of graphs, each one is a clique at the given school
+	 */
 	public ArrayList<Graph> getCliques(String schoolName) {
 		return studentsAtSchool(schoolName).getCliques();
 	}
 	
+	/**
+	 * Returns ArrayList of cliques from graph, only called by above method
+	 */
 	public ArrayList<Graph> getCliques() {
 		boolean[] visited = new boolean[adjList.size()];
 		ArrayList<Graph> cliques = new ArrayList<Graph>();
@@ -245,9 +293,9 @@ public class Graph {
         		int origIndex = nameToIndex(person.name);
         		Neighbor ptr = adjList.get(origIndex).adjList;
         		while (ptr != null) {
-        			String neighborName = indexToName(ptr.vertexNum);
+        			String neighborName = indexToName(ptr.index);
         			int cliqueIndex = clique.nameToIndex(neighborName);
-        			person.addNeighbor(new Neighbor(cliqueIndex, null));
+        			person.addNeighbor(new Neighbor(cliqueIndex));
         			//System.out.println(neighborName + " " + cliqueIndex);
         			ptr = ptr.next;
         		}
@@ -256,17 +304,23 @@ public class Graph {
 		return cliques;
 	}
 	
+	/**
+	 * DFS used by clique method
+	 */
 	private void dfs(int v, boolean[] visited, Graph clique) { //used for getting cliques
 		visited[v] = true;
 		clique.addVertex(adjList.get(v).name, adjList.get(v).school, null);
 		for (Neighbor e=adjList.get(v).adjList; e != null; e=e.next) {
-			if (!visited[e.vertexNum]) {
+			if (!visited[e.index]) {
 				//System.out.println(adjList.get(v).name + "--" + adjList.get(e.vertexNum).name);
-				dfs(e.vertexNum, visited, clique);
+				dfs(e.index, visited, clique);
 			}
 		}
 	}
 	
+	/**
+	 * Prints graph in the format required by the assignment
+	 */
 	public void print() {
 		int size = adjList.size();
 		System.out.println(size);
@@ -287,8 +341,8 @@ public class Graph {
 		for (int j = 0; j < size; j++) {
 			Neighbor ptr = adjList.get(j).adjList;
 			while (ptr != null) {
-				if (j < ptr.vertexNum) {
-					System.out.println(adjList.get(j).name + "|" + indexToName(ptr.vertexNum));
+				if (j < ptr.index) {
+					System.out.println(adjList.get(j).name + "|" + indexToName(ptr.index));
 				}
 				ptr = ptr.next;
 			}
