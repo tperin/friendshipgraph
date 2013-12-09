@@ -38,7 +38,7 @@ class Vertex {
 		adjList = nbr;
     }
     public boolean equals(Vertex v) {
-    	return this.name == v.name && this.school == v.school;
+    	return (this.name == v.name && this.school == v.school);
     }
 }
 
@@ -83,9 +83,10 @@ public class Graph {
 		while (sc.hasNextLine()) { //go through edges/friendships
 			String line = sc.nextLine().toLowerCase();
 			String[] t = line.split("\\|");
-			int i1 = indexes.get(t[0]);
-			int i2 = indexes.get(t[1]);
+			int i1 = indexes.get(t[0]); //person 1
+			int i2 = indexes.get(t[1]); //person 2
 			
+			//create undirected edge between the two people
 			adjList.get(i1).addNeighbor(new Neighbor(i2));
 			adjList.get(i2).addNeighbor(new Neighbor(i1));
 		}
@@ -134,7 +135,8 @@ public class Graph {
 	public Graph studentsAtSchool(String schoolName) {
 		int size = adjList.size();
 		Graph subgraph = new Graph();
-		int counter = 0;
+		int counter = 0; //used for new indexes for subgraph, they won't have the same indexes as the master graph
+		
 		for (int i = 0; i < size; i++) { //add students from school
 			if (adjList.get(i).school != null && adjList.get(i).school.equals(schoolName)) {
 				Vertex old = adjList.get(i);
@@ -145,12 +147,13 @@ public class Graph {
 			}
 		}
 		for (int i = 0; i < subgraph.adjList.size(); i++) { //add edges for that school
-			Vertex newRef = subgraph.adjList.get(i);
-			Vertex origRef = adjList.get(nameToIndex(newRef.name));
+			Vertex newRef = subgraph.adjList.get(i); //student vertex from new subgraph
+			Vertex origRef = adjList.get(nameToIndex(newRef.name)); //student vertex from master graph
 			
+			//loop through vertex's neighbors and add them to subgraph if they go to the same school
 			Neighbor friendPtr = origRef.adjList;
 			while (friendPtr != null) {
-				Vertex friend = adjList.get(friendPtr.index);
+				Vertex friend = adjList.get(friendPtr.index); //neighbor vertex from master graph
 				if (friend.school != null && friend.school.equals(schoolName)) {
 					int newIndex = subgraph.nameToIndex(friend.name);
 					newRef.addNeighbor(new Neighbor(newIndex));
@@ -167,11 +170,9 @@ public class Graph {
 	 */
 	public ArrayList<String> getConnectors() { 
 		boolean[] visited = new boolean[adjList.size()];
-		boolean[] backed = new boolean[adjList.size()];
 		
 		for (int v=0; v < visited.length; v++) {
 			visited[v] = false;
-			backed[v] = false;
 			adjList.get(v).dfsnum = 0;
 			adjList.get(v).backnum = 0;
 		}
@@ -226,14 +227,14 @@ public class Graph {
 		q.enqueue(vSource);
 		
 		HashMap<Vertex,Boolean> visited = new HashMap<Vertex,Boolean>();
-		HashMap<Vertex, Vertex> parents = new HashMap<Vertex, Vertex>();
+		HashMap<Vertex, Vertex> parents = new HashMap<Vertex, Vertex>(); //stores previous vertex in the path for backtracking on completion
 		visited.put(vSource, true);
 		
 		Vertex curr = null;
 		while (!q.isEmpty()) {
 			curr = q.dequeue();
 			
-			if (curr.equals(vTarget)) {
+			if (curr.equals(vTarget)) { //reached destination
 				break;
 			}
 			else {
@@ -249,9 +250,11 @@ public class Graph {
 				}
 			}
 		}
-		if (!curr.equals(vTarget)) {
+		if (!curr.equals(vTarget)) { //no path was found
 			return null;
 		}
+		
+		//backtrack through path and add to string
 		Vertex ptr = vTarget;
 		String result = ptr.name;
 		while (parents.get(ptr) != null) {
@@ -273,14 +276,14 @@ public class Graph {
 	/**
 	 * Returns ArrayList of cliques from graph, only called by above method
 	 */
-	public ArrayList<Graph> getCliques() {
+	private ArrayList<Graph> getCliques() {
 		boolean[] visited = new boolean[adjList.size()];
 		ArrayList<Graph> cliques = new ArrayList<Graph>();
 		for (int v=0; v < visited.length; v++) {
             visited[v] = false;
 		}
         for (int v=0; v < visited.length; v++) {
-            if (!visited[v]) {
+            if (!visited[v]) { //if we haven't visited yet, that means we found a new clique/island
             		Graph clique = new Graph();
                     dfs(v, visited, clique);
                     cliques.add(clique);
@@ -290,13 +293,13 @@ public class Graph {
         	Graph clique = cliques.get(i);
         	for (int j = 0; j < clique.adjList.size(); j++) {
         		Vertex person = clique.adjList.get(j);
-        		int origIndex = nameToIndex(person.name);
-        		Neighbor ptr = adjList.get(origIndex).adjList;
+        		int origIndex = nameToIndex(person.name); //vertex index from master graph
+        		
+        		Neighbor ptr = adjList.get(origIndex).adjList; //vertex's neighbors from master graph
         		while (ptr != null) {
         			String neighborName = indexToName(ptr.index);
-        			int cliqueIndex = clique.nameToIndex(neighborName);
+        			int cliqueIndex = clique.nameToIndex(neighborName); //vertex's index from clique subgraph
         			person.addNeighbor(new Neighbor(cliqueIndex));
-        			//System.out.println(neighborName + " " + cliqueIndex);
         			ptr = ptr.next;
         		}
         	}
@@ -312,7 +315,6 @@ public class Graph {
 		clique.addVertex(adjList.get(v).name, adjList.get(v).school, null);
 		for (Neighbor e=adjList.get(v).adjList; e != null; e=e.next) {
 			if (!visited[e.index]) {
-				//System.out.println(adjList.get(v).name + "--" + adjList.get(e.vertexNum).name);
 				dfs(e.index, visited, clique);
 			}
 		}
@@ -325,7 +327,7 @@ public class Graph {
 		int size = adjList.size();
 		System.out.println(size);
 		
-		for (int i = 0; i < size; i++) {
+		for (int i = 0; i < size; i++) { //print all vertex's and schools if applicable
 			String line = "";
 			line += indexToName(i) + "|";
 			if (adjList.get(i).school == null) {
@@ -338,10 +340,10 @@ public class Graph {
 			System.out.println(line);
 		}
 		
-		for (int j = 0; j < size; j++) {
+		for (int j = 0; j < size; j++) { //print all relationships
 			Neighbor ptr = adjList.get(j).adjList;
 			while (ptr != null) {
-				if (j < ptr.index) {
+				if (j < ptr.index) { //so we don't print duplicates
 					System.out.println(adjList.get(j).name + "|" + indexToName(ptr.index));
 				}
 				ptr = ptr.next;

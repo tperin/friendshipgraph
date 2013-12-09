@@ -6,6 +6,12 @@ import java.util.Scanner;
 
 import structures.Graph;
 
+/**
+ * Runner for Friendship Graph project
+ * @author Timothy Perin
+ * @author Tyng-An Lee
+ *
+ */
 public class Friends {
 	public static void main(String[] args) throws FileNotFoundException {
 		System.out.println("Enter file");
@@ -25,13 +31,13 @@ public class Friends {
 			printMenu();
 			choice = Integer.parseInt(sc.nextLine());
 			
-			if (choice == 1) {
+			if (choice == 1) { //students from school
 				System.out.println("Enter school name");
 				String school = sc.nextLine().toLowerCase();
 				Graph subgraph = fg.studentsAtSchool(school);
 				subgraph.print();
 			}
-			else if (choice == 2) {
+			else if (choice == 2) { //shortest path
 				System.out.println("Enter person 1");
 				String p1 = sc.nextLine();
 				System.out.println("Enter person 2");
@@ -40,7 +46,7 @@ public class Friends {
 				if (chain == null) System.out.println("No connection exists between these two people");
 				else System.out.println(chain);
 			}
-			else if (choice == 3) {
+			else if (choice == 3) { //cliques at school
 				System.out.println("Enter school name");
 				String school = sc.nextLine().toLowerCase();
 				ArrayList<Graph> cliques = fg.getCliques(school);
@@ -49,13 +55,14 @@ public class Friends {
 					cliques.get(i).print();
 				}
 			}
-			else if (choice == 4) {
+			else if (choice == 4) { //connectors
 				ArrayList<String> connectors = fg.getConnectors();
 				for (String s : connectors) System.out.println(s);
 			}
 			else if (choice > 5 || choice < 1) System.out.println("Invalid entry");
 		} while (choice != 5);
 		
+		//if we get here then the user chose to quit
 		System.out.println("Exiting program");
 		sc.close();
 	}
